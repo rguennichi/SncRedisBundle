@@ -125,7 +125,7 @@ class PhpredisClientFactory
                     (int) $dsn->getPort(),
                     $options['connection_timeout'] ?? 0,
                     $options['connection_persistent'] ? $options['service'] : null,
-                    5, // retry interval
+                    5, // retry interva
                     $options['read_write_timeout'] ?? 0,
                 ))->getMasterAddrByName($options['service']);
             } catch (RedisException | RelayException $e) {
