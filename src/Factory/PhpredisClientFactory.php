@@ -11,9 +11,11 @@ use ProxyManager\Factory\AccessInterceptorValueHolderFactory;
 use ProxyManager\Proxy\AccessInterceptorInterface;
 use Redis;
 use RedisCluster;
+use RedisException;
 use RedisSentinel;
 use ReflectionClass;
 use ReflectionMethod;
+use Relay\Exception as RelayException;
 use Relay\Relay;
 use Relay\Sentinel;
 use Snc\RedisBundle\DependencyInjection\Configuration\RedisDsn;
@@ -28,6 +30,7 @@ use function implode;
 use function in_array;
 use function is_a;
 use function is_array;
+use function shuffle;
 use function spl_autoload_register;
 use function sprintf;
 use function var_export;
@@ -113,8 +116,21 @@ class PhpredisClientFactory
         $isRelay       = is_a($class, Sentinel::class, true);
         $sentinelClass = $isRelay ? Sentinel::class : RedisSentinel::class;
 
+        shuffle($dsns);
+
         foreach ($dsns as $dsn) {
-            $address = (new $sentinelClass($dsn->getHost(), (int) $dsn->getPort()))->getMasterAddrByName($options['service']);
+            try {
+                $address = (new $sentinelClass(
+                    $dsn->getHost(),
+                    (int) $dsn->getPort(),
+                    $options['connection_timeout'] ?? 0,
+                    $options['connection_persistent'] ? $options['service'] : null,
+                    5, // retry interval
+                    $options['read_write_timeout'] ?? 0,
+                ))->getMasterAddrByName($options['service']);
+            } catch (RedisException | RelayException $e) {
+                continue;
+            }
 
             if (!$address) {
                 continue;
