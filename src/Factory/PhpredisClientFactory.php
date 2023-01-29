@@ -30,7 +30,6 @@ use function implode;
 use function in_array;
 use function is_a;
 use function is_array;
-use function shuffle;
 use function spl_autoload_register;
 use function sprintf;
 use function var_export;
@@ -115,8 +114,6 @@ class PhpredisClientFactory
     {
         $isRelay       = is_a($class, Sentinel::class, true);
         $sentinelClass = $isRelay ? Sentinel::class : RedisSentinel::class;
-
-        shuffle($dsns);
 
         foreach ($dsns as $dsn) {
             try {
