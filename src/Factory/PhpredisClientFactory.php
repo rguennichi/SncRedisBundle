@@ -30,7 +30,6 @@ use function implode;
 use function in_array;
 use function is_a;
 use function is_array;
-use function shuffle;
 use function spl_autoload_register;
 use function sprintf;
 use function var_export;
@@ -105,29 +104,35 @@ class PhpredisClientFactory
     }
 
     /**
-     * @param class-string            $class
-     * @param list<RedisDsn>          $dsns
-     * @param array{service: ?string} $options
+     * @param class-string   $class
+     * @param list<RedisDsn> $dsns
+     * @param array{
+     *     service: ?string,
+     *     connection_persistent: ?bool,
+     *     connection_timeout: ?string,
+     *     read_write_timeout: ?string} $options
      *
      * @return Redis|Relay
      */
     private function createClientFromSentinel(string $class, array $dsns, string $alias, array $options, bool $loggingEnabled)
     {
-        $isRelay       = is_a($class, Sentinel::class, true);
-        $sentinelClass = $isRelay ? Sentinel::class : RedisSentinel::class;
-
-        shuffle($dsns);
+        $isRelay              = is_a($class, Sentinel::class, true);
+        $sentinelClass        = $isRelay ? Sentinel::class : RedisSentinel::class;
+        $masterName           = $options['service'];
+        $connectionTimeout    = $options['connection_timeout'] ?? 0;
+        $connectionPersistent = $options['connection_persistent'] ? $masterName : null;
+        $readTimeout          = $options['read_write_timeout'] ?? 0;
 
         foreach ($dsns as $dsn) {
             try {
                 $address = (new $sentinelClass(
                     $dsn->getHost(),
                     (int) $dsn->getPort(),
-                    $options['connection_timeout'] ?? 0,
-                    $options['connection_persistent'] ? $options['service'] : null,
-                    5, // retry interva
-                    $options['read_write_timeout'] ?? 0,
-                ))->getMasterAddrByName($options['service']);
+                    $connectionTimeout,
+                    $connectionPersistent,
+                    5, // retry interval
+                    $readTimeout,
+                ))->getMasterAddrByName($masterName);
             } catch (RedisException | RelayException $e) {
                 continue;
             }
@@ -154,8 +159,8 @@ class PhpredisClientFactory
 
         throw new InvalidArgumentException(
             sprintf(
-                'Failed to retrieve master information from sentinel %s and dsn %s.',
-                var_export($options['service'], true),
+                'Failed to retrieve masterName information from sentinel %s and dsn %s.',
+                var_export($options['masterName'], true),
                 var_export($dsns, true),
             ),
         );
