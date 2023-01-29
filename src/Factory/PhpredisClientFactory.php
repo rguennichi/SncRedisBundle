@@ -159,8 +159,8 @@ class PhpredisClientFactory
 
         throw new InvalidArgumentException(
             sprintf(
-                'Failed to retrieve masterName information from sentinel %s and dsn %s.',
-                var_export($options['masterName'], true),
+                'Failed to retrieve master information from sentinel %s and dsn %s.',
+                var_export($masterName, true),
                 var_export($dsns, true),
             ),
         );
